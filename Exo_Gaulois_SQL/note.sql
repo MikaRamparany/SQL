@@ -146,16 +146,75 @@ WHERE id_personnage NOT IN (
 
 -- A. Ajouter le personnage suivant : Champdeblix, agriculteur résidant à la ferme Hantassion de Rotogamus. 
 
-INSERT INTO `personnage` (`nom`, `profession`, `residence`) 
-VALUES ('Champdeblix', 'agriculteur', 'ferme HAntassion de Rotomagus');
+INSERT INTO personnage ( nom_personnage, id_personnage, adresse_personnage, id_lieu, id_specialite, image_personnage)
+VALUES ( 'Champdeblix', '45', 'Ferme Hantassion', '6', '12', 'indisponible.jpg')
 
--- B. Autorisez Bonemine )à boire de la potion magique, elle est jalouse d'Iélosubmarine... 
+-- B. Autorisez Bonemine à boire de la potion magique, elle est jalouse d'Iélosubmarine... 
+INSERT INTO autoriser_boire (id_potion, id_personnage)
+VALUES ('1', '12')
 
 -- C. Supprimez les casques grecs qui n'ont jamais été pris lors d'une bataille. 
+DELETE FROM casque
+WHERE id_type_casque IN (
+  SELECT id_type_casque
+  FROM type_casque
+  WHERE nom_type_casque = 'Grec'
+) AND id_casque NOT IN (
+  SELECT id_casque
+  FROM prendre_casque
+)
 
 -- D. Modifiez l'adressse de Zérozérosix : il a été mis en prison à Condate. 
+UPDATE personnage 
+SET adresse_personnage = "Prison du desespoir", id_lieu = '9' 
+WHERE personnage.id_personnage = 23
+
+-- autre solution : 
+
+UPDATE personnage
+SET adresse_personnage = "Prison du desespoir",
+id_lieu = (
+	SELECT id_lieu
+	FROM lieu
+	WHERE nom_lieu = 'Condate'
+	)
+WHERE nom_personnage = 'Zérozérosix'
+
 
 -- E. La potion 'Soupe' ne doit plus contenir de persil.
+DELETE FROM composer 
+WHERE composer.id_potion = 9  -- id de soupe
+AND composer.id_ingredient = 19 -- id de persil
 
 -- F. Obélix s'est trompé : ce sont 42 casques Weisnau, et non Ostrogth, qu'il a pris lors de la bataille 'Attaque de la banque postale'. Corrigez son erreur ! 
 
+
+
+-- solution 1 : 
+
+UPDATE prendre_casque 
+SET qte = '42' 
+WHERE prendre_casque.id_casque = 10 -- id du casque Weisnau
+AND prendre_casque.id_personnage = 5  -- id d'obelix 
+AND prendre_casque.id_bataille = 2 -- id de l'Attaque de la banque postale 
+
+
+-- solution 2 : 
+UPDATE prendre_casque
+SET id_casque = (
+	SELECT id_casque
+	FROM casque
+	WHERE nom_casque = 'Weisenau'
+	), 
+qte = '42'
+
+WHERE id_personnage = (
+	SELECT id_personnage
+	FROM personnage
+	WHERE nom_personnage = 'Obélix'
+	)
+AND id_bataille = (
+	SELECT id_bataille
+	FROM bataille
+	WHERE nom_bataille = 'Attaque de la banque postale'
+	)
