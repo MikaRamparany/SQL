@@ -3,7 +3,7 @@
 SELECT * 
 FROM lieu 
 WHERE nom_lieu 
-LIKE '%lia'
+LIKE '%um'
 
 --2. le nombre de personnage par lieu (rajout ordre descendant: 
 
@@ -14,9 +14,11 @@ ORDER BY count(id_personnage) DESC;
 
 --3. nom des personnages + spécialité + adresse et lieu d'habitation, triés par lieu puis par nom de personnage. 
 
-SELECT nom_personnage, adresse_personnage, nom_lieu, nom_specialite
-FROM personnage, lieu, specialite
-ORDER BY nom_lieu ASC, nom_personnage ASC
+SELECT personnage.nom_personnage, specialite.nom_specialite, personnage.adresse_personnage, lieu.nom_lieu 
+FROM personnage 
+INNER JOIN specialite ON personnage.id_specialite = specialite.id_specialite 
+INNER JOIN lieu ON personnage.id_lieu = lieu.id_lieu 
+ORDER BY lieu.nom_lieu ASC, personnage.nom_personnage ASC;
 
 
 --4. Nom des spécialités avec nombre de personnages par spécialité (trié par nombre de personnages décroissant).
@@ -37,18 +39,31 @@ ORDER BY date_bataille ASC
 
 -- 6. NOM DES POTIONS + COÛT DE RÉALISATION DE LA POTION (trié par coût décroissant)
 
-SELECT nom_potion AS ‘Potion’, (qte*cout_ingredient) AS 'Coût realisation' FROM potion INNER JOIN composer ON potion.id_potion = composer.id_potion INNER JOIN ingredient ON composer.id_ingredient = ingredient.id_ingredient GROUP BY nom_potion, qte, cout_ingredient ORDER BY (qte*cout_ingredient) DESC;
 
---! verification de requête faite : 
---!Potion ID  12 : nom  -> Envol
---!INgrédit ID : 18 
- QTE ingredient : 3 
---!Cout : 15 
---!Cout real : 15* 3 = 45 --> sur le tableau de résultat ENVOL coute bien 45. 
+SELECT potion.nom_potion AS 'Potion', SUM(composer.qte * ingredient.cout_ingredient) AS 'Coût réalisation'
+FROM potion
+INNER JOIN composer ON potion.id_potion = composer.id_potion
+INNER JOIN ingredient ON composer.id_ingredient = ingredient.id_ingredient
+GROUP BY potion.nom_potion
+ORDER BY SUM(composer.qte * ingredient.cout_ingredient) DESC;
+
+
 
 -- 7. NOM DES INGRÉDIENTS + COÛT + QUANTITÉ DE CHAQUE INGRÉDIENT QUI COMPOSENT LA POTION 'Santé'
 
-SELECT nom_potion, nom_ingredient, COUNT(qte) AS 'Qté ingrédient', cout_ingredient AS 'Coût ingrédient' FROM potion INNER JOIN composer ON potion.id_potion = composer.id_potion INNER JOIN ingredient ON composer.id_ingredient = ingredient.id_ingredient WHERE nom_potion = 'Santé' GROUP BY nom_potion, nom_ingredient, cout_ingredient LIMIT 0, 25;
+-- 1ère Solution : 
+
+SELECT nom_ingredient, cout_ingredient, composer.qte FROM potion 
+INNER JOIN composer ON potion.id_potion = composer.id_potion 
+INNER JOIN ingredient ON composer.id_ingredient = ingredient.id_ingredient 
+WHERE potion.nom_potion = 'Santé';
+
+-- 2ème solution - alternatif : 
+SELECT nom_ingredient, SUM(cout_ingredient) AS 'Cout ingrédient', SUM(qte) AS 'Quantité' 
+FROM composer 
+INNER JOIN ingredient ON composer.id_ingredient = ingredient.id_ingredient 
+INNER JOIN potion ON composer.id_potion = potion.id_potion WHERE nom_potion = 'Santé' GROUP BY nom_ingredient LIMIT 0, 25;
+
 
 
 -- 8. NOM DU/DES PERSONNAGES QUI ONT PRIS LE PLUS DE CASQUES DANS LA BATAILLE 'Bataille du village gaulois'.
@@ -70,12 +85,15 @@ GROUP BY dose_boire, personnage.id_personnage
 ORDER BY dose_boire DESC
 
 -- 10. NOM DE LA BATAILLE OU LE NOMBRE DE CASQUES PRIS A ÉTÉ LE PLUS IMPORTANT
-SELECT nom_bataille AS 'Bataille', qte AS 'Nombre de casques pris'
+
+
+SELECT nom_bataille AS 'Bataille', SUM(qte) AS 'Nombre de casques pris'
 FROM bataille
 INNER JOIN prendre_casque ON prendre_casque.id_bataille = bataille.id_bataille
-GROUP BY qte, nom_bataille
-ORDER BY qte DESC
-LIMIT 1
+GROUP BY nom_bataille
+ORDER BY SUM(qte) DESC
+LIMIT 1;
+
 
 -- 11. COMBIEN DE CASQUES PAR TYPE ET QUEL COÛT TOTAL (classé par nombre décroissant)
 SELECT nom_type_casque AS 'Type de casque', COUNT(id_casque) AS 'Nombre de casques', SUM(cout_casque) AS 'Coût total'
@@ -89,13 +107,13 @@ SELECT nom_potion AS 'Potion'
 FROM potion
 INNER JOIN composer ON potion.id_potion = composer.id_potion
 INNER JOIN ingredient ON composer.id_ingredient = ingredient.id_ingredient
-WHERE ingredient.id_ingredient = '24'
+WHERE ingredient.nom_ingredient = 'Poisson frais'
 
 -- 13. NOM DU/DES LIEU/X POSSÉDANT LE PLUS D'HABITANTS, EN DEHORS DU VILLAGE GAULOIS
 SELECT nom_lieu AS 'Lieu', COUNT(lieu.id_lieu) AS "Nombre d'habitant(s)"
 FROM lieu
-INNER JOIN personnage ON lieu.id_lieu = personnage.id_lieu
-WHERE NOT lieu.id_lieu = '1'
+INNER JOIN personnage ON lieu.id_lieu = personnage.id_lieu/phpMyAdmin5/index.php
+WHERE NOT lieu.nom_lieu = 'Village gaulois'
 GROUP BY nom_lieu
 ORDER BY COUNT(lieu.id_lieu) DESC
 LIMIT 1
@@ -119,3 +137,25 @@ WHERE id_personnage NOT IN (
   INNER JOIN potion ON autoriser_boire.id_potion = potion.id_potion
   WHERE potion.nom_potion = 'Magique'
 );
+
+
+----------------------------------------------------------------
+
+
+--  Partie 2 : requêtes de création. 
+
+-- A. Ajouter le personnage suivant : Champdeblix, agriculteur résidant à la ferme Hantassion de Rotogamus. 
+
+INSERT INTO `personnage` (`nom`, `profession`, `residence`) 
+VALUES ('Champdeblix', 'agriculteur', 'ferme HAntassion de Rotomagus');
+
+-- B. Autorisez Bonemine )à boire de la potion magique, elle est jalouse d'Iélosubmarine... 
+
+-- C. Supprimez les casques grecs qui n'ont jamais été pris lors d'une bataille. 
+
+-- D. Modifiez l'adressse de Zérozérosix : il a été mis en prison à Condate. 
+
+-- E. La potion 'Soupe' ne doit plus contenir de persil.
+
+-- F. Obélix s'est trompé : ce sont 42 casques Weisnau, et non Ostrogth, qu'il a pris lors de la bataille 'Attaque de la banque postale'. Corrigez son erreur ! 
+
